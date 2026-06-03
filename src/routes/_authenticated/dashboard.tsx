@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { daysUntilBirthday, ageOn, nextBirthday, formatMonthDay, initials, type Person } from "@/lib/birthday";
 import { Cake, Gift } from "lucide-react";
+import { NotificationBanner, NotificationStatusPill } from "@/components/NotificationBanner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -23,10 +24,15 @@ function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-3xl font-semibold">Upcoming</h1>
-        <p className="text-muted-foreground text-sm">Birthdays in your circle, sorted by what's next.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-semibold">Upcoming</h1>
+          <p className="text-muted-foreground text-sm">Birthdays in your circle, sorted by what's next.</p>
+        </div>
+        <NotificationStatusPill />
       </div>
+
+      <NotificationBanner people={people} />
 
       {isLoading ? (
         <div className="text-muted-foreground text-sm">Loading…</div>

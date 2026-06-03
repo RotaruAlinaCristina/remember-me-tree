@@ -11,6 +11,11 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { Toaster } from "sonner";
+import { useEffect as useEffectAuth } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useRouter as useRouterAuth } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 
 function NotFoundComponent() {
   return (

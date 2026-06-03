@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -41,7 +41,7 @@ function EditPerson() {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useState(() => {
+  useEffect(() => {
     if (person) {
       setName(person.name);
       setBirthdate(person.birthdate);
@@ -52,21 +52,7 @@ function EditPerson() {
       setGiftIdeas(person.gift_ideas || "");
       setNotes(person.notes || "");
     }
-  });
-
-  // Prefill when person loads
-  useState(() => {
-    if (person) {
-      setName(person.name);
-      setBirthdate(person.birthdate);
-      setGender(person.gender || "");
-      setMotherId(person.mother_id || "");
-      setFatherId(person.father_id || "");
-      setPartnerId(person.partner_id || "");
-      setGiftIdeas(person.gift_ideas || "");
-      setNotes(person.notes || "");
-    }
-  });
+  }, [person]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();

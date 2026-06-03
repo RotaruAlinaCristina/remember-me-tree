@@ -102,12 +102,12 @@ function AuthPage() {
   );
 }
 
-function Input({ value, onChange, ...rest }: { value: string; onChange: (v: string) => void } & React.InputHTMLAttributes<HTMLInputElement>) {
+function Input({ value, onValueChange, ...rest }: { value: string; onValueChange: (v: string) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
   return (
     <input
       {...rest}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => onValueChange(e.target.value)}
       className="w-full px-4 py-3 rounded-xl bg-input/40 border border-border focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-foreground placeholder:text-muted-foreground"
     />
   );

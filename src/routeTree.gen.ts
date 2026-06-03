@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPeopleRouteImport } from './routes/_authenticated/people'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedPeopleNewRouteImport } from './routes/_authenticated/people.new'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -39,18 +40,25 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPeopleNewRoute = AuthenticatedPeopleNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AuthenticatedPeopleRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/people': typeof AuthenticatedPeopleRoute
+  '/people': typeof AuthenticatedPeopleRouteWithChildren
+  '/people/new': typeof AuthenticatedPeopleNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/people': typeof AuthenticatedPeopleRoute
+  '/people': typeof AuthenticatedPeopleRouteWithChildren
+  '/people/new': typeof AuthenticatedPeopleNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,13 +66,14 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/people': typeof AuthenticatedPeopleRoute
+  '/_authenticated/people': typeof AuthenticatedPeopleRouteWithChildren
+  '/_authenticated/people/new': typeof AuthenticatedPeopleNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/people'
+  fullPaths: '/' | '/auth' | '/dashboard' | '/people' | '/people/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/people'
+  to: '/' | '/auth' | '/dashboard' | '/people' | '/people/new'
   id:
     | '__root__'
     | '/'
@@ -72,6 +81,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/people'
+    | '/_authenticated/people/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,17 +127,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/people/new': {
+      id: '/_authenticated/people/new'
+      path: '/new'
+      fullPath: '/people/new'
+      preLoaderRoute: typeof AuthenticatedPeopleNewRouteImport
+      parentRoute: typeof AuthenticatedPeopleRoute
+    }
   }
 }
 
+interface AuthenticatedPeopleRouteChildren {
+  AuthenticatedPeopleNewRoute: typeof AuthenticatedPeopleNewRoute
+}
+
+const AuthenticatedPeopleRouteChildren: AuthenticatedPeopleRouteChildren = {
+  AuthenticatedPeopleNewRoute: AuthenticatedPeopleNewRoute,
+}
+
+const AuthenticatedPeopleRouteWithChildren =
+  AuthenticatedPeopleRoute._addFileChildren(AuthenticatedPeopleRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedPeopleRoute: typeof AuthenticatedPeopleRoute
+  AuthenticatedPeopleRoute: typeof AuthenticatedPeopleRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedPeopleRoute: AuthenticatedPeopleRoute,
+  AuthenticatedPeopleRoute: AuthenticatedPeopleRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =

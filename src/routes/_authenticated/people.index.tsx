@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatMonthDay, initials, type Person } from "@/lib/birthday";
 
-export const Route = createFileRoute("/_authenticated/people")({
+export const Route = createFileRoute("/_authenticated/people/")({
   component: PeopleList,
 });
 

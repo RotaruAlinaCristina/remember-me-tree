@@ -80,10 +80,10 @@ function AuthPage() {
 
           <form onSubmit={handleSubmit} className="space-y-3">
             {mode === "signup" && (
-              <Input value={name} onChange={setName} placeholder="Your name" autoComplete="name" required />
+              <Input value={name} onValueChange={setName} placeholder="Your name" autoComplete="name" required />
             )}
-            <Input value={email} onChange={setEmail} type="email" placeholder="you@example.com" autoComplete="email" required />
-            <Input value={password} onChange={setPassword} type="password" placeholder="Password" autoComplete={mode === "signup" ? "new-password" : "current-password"} required minLength={6} />
+            <Input value={email} onValueChange={setEmail} type="email" placeholder="you@example.com" autoComplete="email" required />
+            <Input value={password} onValueChange={setPassword} type="password" placeholder="Password" autoComplete={mode === "signup" ? "new-password" : "current-password"} required minLength={6} />
             <button type="submit" disabled={loading} className="w-full py-3 rounded-xl font-medium text-primary-foreground disabled:opacity-60" style={{ background: "var(--gradient-festive)", boxShadow: "var(--shadow-glow)" }}>
               {loading ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
             </button>

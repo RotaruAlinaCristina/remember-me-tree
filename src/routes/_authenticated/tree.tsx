@@ -141,12 +141,22 @@ function TreeNode({
 
 function PersonChip({ person }: { person: Person }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 min-w-[88px] max-w-[120px]">
-      <div
-        className="grid place-items-center w-14 h-14 rounded-full text-primary-foreground font-semibold text-sm shadow-[var(--shadow-card)]"
-        style={{ background: "var(--gradient-festive)" }}
-      >
-        {initials(person.name)}
+    <div className="flex flex-col items-center gap-1.5 min-w-[88px] max-w-[120px] group">
+      <div className="relative">
+        <div
+          className="grid place-items-center w-14 h-14 rounded-full text-primary-foreground font-semibold text-sm shadow-[var(--shadow-card)]"
+          style={{ background: "var(--gradient-festive)" }}
+        >
+          {initials(person.name)}
+        </div>
+        <Link
+          to="/people/$id/edit"
+          params={{ id: person.id }}
+          className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-background border border-border grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+          aria-label={`Edit ${person.name}`}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </Link>
       </div>
       <div className="text-xs font-medium text-center leading-tight truncate w-full">
         {person.name}

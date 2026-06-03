@@ -25,7 +25,7 @@ function PeopleList() {
       ) : (
         <ul className="space-y-2">
           {people.map((p) => (
-            <Link key={p.id} to="/people/$id" params={{ id: p.id }} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border">
+            <Link key={p.id} to="/people/$id/edit" params={{ id: p.id }} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border">
               <div className="grid place-items-center w-11 h-11 rounded-full bg-secondary font-semibold">{initials(p.name)}</div>
               <div className="flex-1">
                 <div className="font-medium">{p.name}</div>

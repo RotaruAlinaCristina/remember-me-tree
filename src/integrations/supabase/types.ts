@@ -14,7 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      people: {
+        Row: {
+          birthdate: string
+          created_at: string
+          father_id: string | null
+          gender: string | null
+          gift_ideas: string | null
+          id: string
+          is_self: boolean
+          mother_id: string | null
+          name: string
+          notes: string | null
+          partner_id: string | null
+          photo_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          birthdate: string
+          created_at?: string
+          father_id?: string | null
+          gender?: string | null
+          gift_ideas?: string | null
+          id?: string
+          is_self?: boolean
+          mother_id?: string | null
+          name: string
+          notes?: string | null
+          partner_id?: string | null
+          photo_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          birthdate?: string
+          created_at?: string
+          father_id?: string | null
+          gender?: string | null
+          gift_ideas?: string | null
+          id?: string
+          is_self?: boolean
+          mother_id?: string | null
+          name?: string
+          notes?: string | null
+          partner_id?: string | null
+          photo_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_father_id_fkey"
+            columns: ["father_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_mother_id_fkey"
+            columns: ["mother_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reminder_log: {
+        Row: {
+          birthday_year: number
+          id: string
+          person_id: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          birthday_year: number
+          id?: string
+          person_id: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          birthday_year?: number
+          id?: string
+          person_id?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_log_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

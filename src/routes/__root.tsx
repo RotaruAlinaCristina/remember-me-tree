@@ -77,12 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#fbf6ee" },
-      { title: "Kindred — Birthdays & Family Tree" },
-      { name: "description", content: "Never forget a birthday. Keep your family tree, gift ideas, and reminders all in one warm little place." },
-      { property: "og:title", content: "Kindred — Birthdays & Family Tree" },
-      { property: "og:description", content: "Never forget a birthday. Keep your family tree, gift ideas, and reminders all in one warm little place." },
+      { title: "Ziua Ta — Zile de naștere & arbore genealogic" },
+      { name: "description", content: "Nu mai uita o zi de naștere. Ține arborele familiei, ideile de cadouri și amintirile într-un loc cald." },
+      { property: "og:title", content: "Ziua Ta — Zile de naștere & arbore genealogic" },
+      { property: "og:description", content: "Nu mai uita o zi de naștere. Ține arborele familiei, ideile de cadouri și amintirile într-un loc cald." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+
     ],
     links: [
       { rel: "stylesheet", href: appCss },

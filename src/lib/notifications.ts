@@ -47,19 +47,27 @@ export function checkAndNotify(people: Person[], withinDays = 3) {
     if (map[p.id] === year) continue;
 
     const turning = ageOn(p.birthdate, nextBirthday(p.birthdate));
-    const body =
-      days === 0
-        ? `🎉 ${p.name} turns ${turning} today!`
-        : days === 1
-          ? `${p.name} turns ${turning} tomorrow.`
-          : `${p.name} turns ${turning} in ${days} days.`;
+    const lang = (typeof localStorage !== "undefined" && localStorage.getItem("ziua-ta:lang")) === "en" ? "en" : "ro";
+    const body = lang === "ro"
+      ? (days === 0
+          ? `🎉 ${p.name} împlinește ${turning} astăzi!`
+          : days === 1
+            ? `${p.name} împlinește ${turning} mâine.`
+            : `${p.name} împlinește ${turning} în ${days} zile.`)
+      : (days === 0
+          ? `🎉 ${p.name} turns ${turning} today!`
+          : days === 1
+            ? `${p.name} turns ${turning} tomorrow.`
+            : `${p.name} turns ${turning} in ${days} days.`);
+    const title = lang === "ro" ? "Amintire zi de naștere" : "Birthday reminder";
 
     try {
-      new Notification("Birthday reminder", {
+      new Notification(title, {
         body,
         tag: `birthday-${p.id}-${year}`,
         icon: "/favicon.ico",
       });
+
       map[p.id] = year;
       changed = true;
     } catch {

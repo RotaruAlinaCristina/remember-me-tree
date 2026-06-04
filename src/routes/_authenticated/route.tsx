@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect, Link, useRouter } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Cake, Users, GitBranch, LogOut, Plus } from "lucide-react";
+import { LanguageToggle, useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthedLayout() {
   const router = useRouter();
+  const { t } = useI18n();
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.navigate({ to: "/auth" });
@@ -27,11 +29,14 @@ function AuthedLayout() {
             <span className="grid place-items-center w-8 h-8 rounded-full" style={{ background: "var(--gradient-festive)" }}>
               <Cake className="w-4 h-4 text-primary-foreground" />
             </span>
-            <span className="font-display text-xl font-semibold">Kindred</span>
+            <span className="font-display text-xl font-semibold">{t("app.name")}</span>
           </Link>
-          <button onClick={handleSignOut} className="text-muted-foreground hover:text-foreground p-2 -mr-2">
-            <LogOut className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <button onClick={handleSignOut} aria-label={t("nav.signout")} className="text-muted-foreground hover:text-foreground p-2 -mr-2">
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -41,14 +46,14 @@ function AuthedLayout() {
 
       <nav className="fixed bottom-0 inset-x-0 z-20 border-t border-border bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
         <div className="mx-auto max-w-2xl grid grid-cols-4 items-center">
-          <TabLink to="/" icon={<Cake className="w-5 h-5" />} label="Upcoming" />
-          <TabLink to="/people" icon={<Users className="w-5 h-5" />} label="People" />
+          <TabLink to="/" icon={<Cake className="w-5 h-5" />} label={t("nav.upcoming")} />
+          <TabLink to="/people" icon={<Users className="w-5 h-5" />} label={t("nav.people")} />
           <div className="flex justify-center">
-            <Link to="/people/new" className="-mt-6 grid place-items-center w-14 h-14 rounded-full shadow-lg text-primary-foreground" style={{ background: "var(--gradient-festive)", boxShadow: "var(--shadow-glow)" }} aria-label="Add person">
+            <Link to="/people/new" className="-mt-6 grid place-items-center w-14 h-14 rounded-full shadow-lg text-primary-foreground" style={{ background: "var(--gradient-festive)", boxShadow: "var(--shadow-glow)" }} aria-label={t("nav.add")}>
               <Plus className="w-6 h-6" />
             </Link>
           </div>
-          <TabLink to="/tree" icon={<GitBranch className="w-5 h-5" />} label="Tree" />
+          <TabLink to="/tree" icon={<GitBranch className="w-5 h-5" />} label={t("nav.tree")} />
         </div>
       </nav>
     </div>

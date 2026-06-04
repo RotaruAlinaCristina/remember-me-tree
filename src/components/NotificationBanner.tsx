@@ -4,13 +4,14 @@ import {
   notificationPermission,
   notificationSupported,
   requestNotificationPermission,
+  registerPushSubscription,
   checkAndNotify,
 } from "@/lib/notifications";
 import type { Person } from "@/lib/birthday";
 import { useI18n } from "@/lib/i18n";
+import { supabase } from "@/integrations/supabase/client";
 
 const DISMISS_KEY = "ziua-ta:notif-banner-dismissed";
-
 
 export function NotificationBanner({ people }: { people: Person[] }) {
   const { t } = useI18n();
@@ -23,7 +24,10 @@ export function NotificationBanner({ people }: { people: Person[] }) {
   }, []);
 
   useEffect(() => {
-    if (perm === "granted" && people.length) checkAndNotify(people, 3);
+    if (perm === "granted" && people.length) {
+      checkAndNotify(people, 3);
+      checkAndNotify(people, 0);
+    }
   }, [perm, people]);
 
   if (!notificationSupported()) return null;
@@ -33,7 +37,14 @@ export function NotificationBanner({ people }: { people: Person[] }) {
   const enable = async () => {
     const result = await requestNotificationPermission();
     setPerm(result);
-    if (result === "granted") checkAndNotify(people, 3);
+    if (result === "granted") {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        await registerPushSubscription(data.user.id);
+      }
+      checkAndNotify(people, 3);
+      checkAndNotify(people, 0);
+    }
   };
 
   const dismiss = () => {
@@ -43,7 +54,10 @@ export function NotificationBanner({ people }: { people: Person[] }) {
 
   return (
     <div className="relative rounded-2xl border border-border bg-card p-4 flex items-start gap-3">
-      <div className="grid place-items-center w-10 h-10 rounded-full shrink-0 text-primary-foreground" style={{ background: "var(--gradient-festive)" }}>
+      <div
+        className="grid place-items-center w-10 h-10 rounded-full shrink-0 text-primary-foreground"
+        style={{ background: "var(--gradient-festive)" }}
+      >
         <Bell className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0 pr-6">
@@ -89,4 +103,3 @@ export function NotificationStatusPill() {
   }
   return null;
 }
-

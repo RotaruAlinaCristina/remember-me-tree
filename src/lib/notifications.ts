@@ -1,23 +1,7 @@
-import { daysUntilBirthday, ageOn, nextBirthday, type Person } from "./birthday";
-
-const STORAGE_KEY = "kindred:notified";
-
-type NotifiedMap = Record<string, string>; // personId -> "YYYY" (birthday year notified for)
-
-function readMap(): NotifiedMap {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function writeMap(m: NotifiedMap) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(m));
-}
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string;
 
 export function notificationSupported(): boolean {
-  return typeof window !== "undefined" && "Notification" in window;
+  return "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
 }
 
 export function notificationPermission(): NotificationPermission | "unsupported" {
@@ -25,55 +9,83 @@ export function notificationPermission(): NotificationPermission | "unsupported"
   return Notification.permission;
 }
 
-export async function requestNotificationPermission(): Promise<NotificationPermission> {
-  if (!notificationSupported()) return "denied";
-  if (Notification.permission === "granted" || Notification.permission === "denied") {
-    return Notification.permission;
-  }
+export async function requestNotificationPermission(): Promise<NotificationPermission | "unsupported"> {
+  if (!notificationSupported()) return "unsupported";
   return await Notification.requestPermission();
 }
 
-/** Fire notifications for any person whose birthday is within `withinDays` days,
- *  once per birthday year. */
-export function checkAndNotify(people: Person[], withinDays = 3) {
-  if (!notificationSupported() || Notification.permission !== "granted") return;
-  const map = readMap();
-  let changed = false;
+function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const buffer = new ArrayBuffer(rawData.length);
+  const view = new Uint8Array(buffer);
+  for (let i = 0; i < rawData.length; i++) {
+    view[i] = rawData.charCodeAt(i);
+  }
+  return buffer;
+}
 
-  for (const p of people) {
-    const days = daysUntilBirthday(p.birthdate);
-    if (days > withinDays) continue;
-    const year = String(nextBirthday(p.birthdate).getFullYear());
-    if (map[p.id] === year) continue;
+export async function registerPushSubscription(userId: string): Promise<boolean> {
+  try {
+    if (!notificationSupported()) return false;
 
-    const turning = ageOn(p.birthdate, nextBirthday(p.birthdate));
-    const lang = (typeof localStorage !== "undefined" && localStorage.getItem("ziua-ta:lang")) === "en" ? "en" : "ro";
-    const body = lang === "ro"
-      ? (days === 0
-          ? `🎉 ${p.name} împlinește ${turning} astăzi!`
-          : days === 1
-            ? `${p.name} împlinește ${turning} mâine.`
-            : `${p.name} împlinește ${turning} în ${days} zile.`)
-      : (days === 0
-          ? `🎉 ${p.name} turns ${turning} today!`
-          : days === 1
-            ? `${p.name} turns ${turning} tomorrow.`
-            : `${p.name} turns ${turning} in ${days} days.`);
-    const title = lang === "ro" ? "Amintire zi de naștere" : "Birthday reminder";
+    const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    await navigator.serviceWorker.ready;
 
-    try {
-      new Notification(title, {
-        body,
-        tag: `birthday-${p.id}-${year}`,
-        icon: "/favicon.ico",
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
+    }
 
-      map[p.id] = year;
-      changed = true;
-    } catch {
-      // ignore
+    const { endpoint, keys } = subscription.toJSON() as {
+      endpoint: string;
+      keys: { p256dh: string; auth: string };
+    };
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(
+      import.meta.env.VITE_SUPABASE_URL,
+      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+    );
+
+    await supabase.from("push_subscriptions").upsert(
+      { user_id: userId, endpoint, p256dh: keys.p256dh, auth: keys.auth },
+      { onConflict: "endpoint" }
+    );
+
+    return true;
+  } catch (err) {
+    console.error("Push registration failed:", err);
+    return false;
+  }
+}
+
+export async function checkAndNotify(people: import("@/lib/birthday").Person[], daysAhead: number): Promise<void> {
+  if (!notificationSupported() || Notification.permission !== "granted") return;
+
+  const today = new Date();
+  for (const person of people) {
+    const [, month, day] = person.birthdate.split("-").map(Number);
+    const next = new Date(today.getFullYear(), month - 1, day);
+    if (next < today) next.setFullYear(today.getFullYear() + 1);
+    const diff = Math.round((next.getTime() - today.getTime()) / 86400000);
+
+    if (diff === daysAhead) {
+      new Notification(`🎂 ${person.name}`, {
+        body: `Ziua de naștere peste ${daysAhead} zile — ${day}.${month}!`,
+        icon: "/icon-192.png",
+      });
+    }
+    if (diff === 0) {
+      new Notification(`🎉 La mulți ani, ${person.name}!`, {
+        body: `Astăzi este ziua lor de naștere!`,
+        icon: "/icon-192.png",
+      });
     }
   }
-
-  if (changed) writeMap(map);
 }

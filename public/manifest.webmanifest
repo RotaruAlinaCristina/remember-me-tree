@@ -1,0 +1,24 @@
+{
+    "name": "Ziua Ta",
+    "short_name": "Ziua Ta",
+    "description": "Zile de naștere și arbore genealogic",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#fbf6ee",
+    "theme_color": "#fbf6ee",
+    "orientation": "portrait",
+    "icons": [
+      {
+        "src": "/icon-192.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any maskable"
+      },
+      {
+        "src": "/icon-512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any maskable"
+      }
+    ]
+  }

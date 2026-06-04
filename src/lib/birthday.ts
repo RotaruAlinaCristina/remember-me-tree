@@ -11,6 +11,7 @@ export type Person = {
   father_id: string | null;
   partner_id: string | null;
   is_self: boolean;
+  is_favorite: boolean;
 };
 
 export function parseBirthdate(d: string): Date {

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { initials, type Person } from "@/lib/birthday";
-import { Heart, Users, Search, X } from "lucide-react";
+import { Heart, Users, Search, X, ChevronUp, ChevronDown } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
 
@@ -26,14 +26,7 @@ function TreePage() {
 
   const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return people;
-    return people.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
-  }, [people, search]);
-
-  const selected = selectedId ? byId.get(selectedId) : null;
-
-  // Găsește copiii unei persoane
+  // Toți copiii unei persoane
   const childrenOf = useMemo(() => {
     const map = new Map<string, Person[]>();
     for (const p of people) {
@@ -47,40 +40,129 @@ function TreePage() {
     return map;
   }, [people, byId]);
 
-  // Găsește frații/surorile
-  const siblingsOf = useMemo(() => {
-    if (!selected) return [];
-    const siblings: Person[] = [];
-    const seenIds = new Set<string>();
-    for (const parentId of [selected.mother_id, selected.father_id]) {
-      if (!parentId) continue;
-      const kids = childrenOf.get(parentId) ?? [];
-      for (const k of kids) {
-        if (k.id !== selected.id && !seenIds.has(k.id)) {
-          siblings.push(k);
-          seenIds.add(k.id);
+  // Toți descendenții recursiv: copii, nepoți, strănepoți etc.
+  function getDescendants(personId: string, visited = new Set<string>()): { generation: number; persons: Person[] }[] {
+    if (visited.has(personId)) return [];
+    visited.add(personId);
+
+    const person = byId.get(personId);
+    if (!person) return [];
+
+    const directKids: Person[] = [];
+    const seenKids = new Set<string>();
+
+    const addKids = (pid: string) => {
+      for (const k of childrenOf.get(pid) ?? []) {
+        if (!seenKids.has(k.id)) {
+          seenKids.add(k.id);
+          directKids.push(k);
+        }
+      }
+    };
+
+    addKids(personId);
+    if (person.partner_id) addKids(person.partner_id);
+
+    if (directKids.length === 0) return [];
+
+    const result: { generation: number; persons: Person[] }[] = [{ generation: 1, persons: directKids }];
+
+    for (const kid of directKids) {
+      const kidDescendants = getDescendants(kid.id, visited);
+      for (const d of kidDescendants) {
+        const existing = result.find((r) => r.generation === d.generation + 1);
+        if (existing) {
+          for (const p of d.persons) {
+            if (!existing.persons.find((x) => x.id === p.id)) existing.persons.push(p);
+          }
+        } else {
+          result.push({ generation: d.generation + 1, persons: d.persons });
         }
       }
     }
-    return siblings;
-  }, [selected, childrenOf]);
 
-  // Copiii persoanei selectate
-  const children = useMemo(() => {
-    if (!selected) return [];
-    const kids: Person[] = [];
-    const seenIds = new Set<string>();
-    const directKids = childrenOf.get(selected.id) ?? [];
-    const partner = selected.partner_id ? byId.get(selected.partner_id) : null;
-    const partnerKids = partner ? (childrenOf.get(partner.id) ?? []) : [];
-    for (const k of [...directKids, ...partnerKids]) {
-      if (!seenIds.has(k.id)) {
-        kids.push(k);
-        seenIds.add(k.id);
+    return result;
+  }
+
+  // Toți strămoșii recursiv: părinți, bunici, străbunici etc.
+  function getAncestors(personId: string, visited = new Set<string>()): { generation: number; persons: Person[] }[] {
+    if (visited.has(personId)) return [];
+    visited.add(personId);
+
+    const person = byId.get(personId);
+    if (!person) return [];
+
+    const parents: Person[] = [];
+    if (person.mother_id && byId.has(person.mother_id)) parents.push(byId.get(person.mother_id)!);
+    if (person.father_id && byId.has(person.father_id)) parents.push(byId.get(person.father_id)!);
+
+    if (parents.length === 0) return [];
+
+    const result: { generation: number; persons: Person[] }[] = [{ generation: 1, persons: parents }];
+
+    for (const parent of parents) {
+      const parentAncestors = getAncestors(parent.id, visited);
+      for (const a of parentAncestors) {
+        const existing = result.find((r) => r.generation === a.generation + 1);
+        if (existing) {
+          for (const p of a.persons) {
+            if (!existing.persons.find((x) => x.id === p.id)) existing.persons.push(p);
+          }
+        } else {
+          result.push({ generation: a.generation + 1, persons: a.persons });
+        }
       }
     }
-    return kids;
-  }, [selected, childrenOf, byId]);
+
+    return result;
+  }
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return people;
+    return people.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  }, [people, search]);
+
+  const selected = selectedId ? byId.get(selectedId) : null;
+
+  const ancestors = useMemo(() => {
+    if (!selectedId) return [];
+    return getAncestors(selectedId).sort((a, b) => b.generation - a.generation);
+  }, [selectedId, byId, childrenOf]);
+
+  const descendants = useMemo(() => {
+    if (!selectedId) return [];
+    return getDescendants(selectedId).sort((a, b) => a.generation - b.generation);
+  }, [selectedId, byId, childrenOf]);
+
+  const siblings = useMemo(() => {
+    if (!selected) return [];
+    const sibs: Person[] = [];
+    const seen = new Set<string>();
+    for (const parentId of [selected.mother_id, selected.father_id]) {
+      if (!parentId) continue;
+      for (const k of childrenOf.get(parentId) ?? []) {
+        if (k.id !== selected.id && !seen.has(k.id)) {
+          sibs.push(k);
+          seen.add(k.id);
+        }
+      }
+    }
+    return sibs;
+  }, [selected, childrenOf]);
+
+  const generationLabel = (gen: number, type: "ancestor" | "descendant") => {
+    if (type === "ancestor") {
+      if (gen === 1) return t("tree.parents");
+      if (gen === 2) return t("tree.grandparents");
+      if (gen === 3) return "Străbunici";
+      return `Generația -${gen}`;
+    } else {
+      if (gen === 1) return t("tree.children");
+      if (gen === 2) return "Nepoți";
+      if (gen === 3) return "Strănepoți";
+      return `Generația +${gen}`;
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -95,12 +177,15 @@ function TreePage() {
         <EmptyState />
       ) : (
         <div className="space-y-5">
-          {/* Căsuță de căutare */}
+          {/* Căutare */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                if (e.target.value) setSelectedId(null);
+              }}
               placeholder={t("tree.search_placeholder")}
               className="w-full pl-9 pr-9 py-3 rounded-2xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm"
             />
@@ -132,7 +217,7 @@ function TreePage() {
             </div>
           )}
 
-          {/* Arborele centrat pe persoana selectată */}
+          {/* Arbore centrat */}
           {selected && (
             <div className="space-y-4">
               <button
@@ -142,36 +227,30 @@ function TreePage() {
                 <X className="w-4 h-4" /> {t("tree.back")}
               </button>
 
-              <div className="rounded-3xl border border-border bg-card/50 p-6 space-y-8">
+              <div className="rounded-3xl border border-border bg-card/50 p-6 space-y-6">
 
-                {/* Bunici */}
-                {(selected.mother_id || selected.father_id) && (() => {
-                  const mother = selected.mother_id ? byId.get(selected.mother_id) : null;
-                  const father = selected.father_id ? byId.get(selected.father_id) : null;
-                  const maternalGrandmother = mother?.mother_id ? byId.get(mother.mother_id) : null;
-                  const maternalGrandfather = mother?.father_id ? byId.get(mother.father_id) : null;
-                  const paternalGrandmother = father?.mother_id ? byId.get(father.mother_id) : null;
-                  const paternalGrandfather = father?.father_id ? byId.get(father.father_id) : null;
-                  const hasGrandparents = maternalGrandmother || maternalGrandfather || paternalGrandmother || paternalGrandfather;
-
-                  return (
-                    <>
-                      {hasGrandparents && (
-                        <FamilyRow label={t("tree.grandparents")} persons={[maternalGrandmother, maternalGrandfather, paternalGrandmother, paternalGrandfather].filter(Boolean) as Person[]} onSelect={setSelectedId} />
-                      )}
+                {/* Strămoși — de sus în jos */}
+                {ancestors.length > 0 && (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-widest">
+                      <ChevronUp className="w-4 h-4" /> Strămoși
+                    </div>
+                    {ancestors.map((row) => (
                       <FamilyRow
-                        label={t("tree.parents")}
-                        persons={[mother, father].filter(Boolean) as Person[]}
+                        key={`anc-${row.generation}`}
+                        label={generationLabel(row.generation, "ancestor")}
+                        persons={row.persons}
                         onSelect={setSelectedId}
-                        showHeart={!!(mother && father)}
                       />
-                    </>
-                  );
-                })()}
+                    ))}
+                  </div>
+                )}
 
                 {/* Persoana selectată + partener */}
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-xs uppercase tracking-widest text-muted-foreground mb-2">{t("tree.you_selected")}</span>
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
+                    {t("tree.you_selected")}
+                  </span>
                   <div className="flex items-center gap-3">
                     <PersonChip person={selected} onSelect={setSelectedId} isSelected />
                     {selected.partner_id && byId.get(selected.partner_id) && (
@@ -184,13 +263,29 @@ function TreePage() {
                 </div>
 
                 {/* Frați/Surori */}
-                {siblingsOf.length > 0 && (
-                  <FamilyRow label={t("tree.siblings")} persons={siblingsOf} onSelect={setSelectedId} />
+                {siblings.length > 0 && (
+                  <FamilyRow
+                    label={t("tree.siblings")}
+                    persons={siblings}
+                    onSelect={setSelectedId}
+                  />
                 )}
 
-                {/* Copii */}
-                {children.length > 0 && (
-                  <FamilyRow label={t("tree.children")} persons={children} onSelect={setSelectedId} />
+                {/* Descendenți — generație după generație */}
+                {descendants.length > 0 && (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-widest">
+                      <ChevronDown className="w-4 h-4" /> Descendenți
+                    </div>
+                    {descendants.map((row) => (
+                      <FamilyRow
+                        key={`desc-${row.generation}`}
+                        label={generationLabel(row.generation, "descendant")}
+                        persons={row.persons}
+                        onSelect={setSelectedId}
+                      />
+                    ))}
+                  </div>
                 )}
 
               </div>
@@ -202,23 +297,17 @@ function TreePage() {
   );
 }
 
-function FamilyRow({ label, persons, onSelect, showHeart }: {
+function FamilyRow({ label, persons, onSelect }: {
   label: string;
   persons: Person[];
   onSelect: (id: string) => void;
-  showHeart?: boolean;
 }) {
   return (
     <div className="flex flex-col items-center gap-2">
       <span className="text-xs uppercase tracking-widest text-muted-foreground">{label}</span>
       <div className="flex flex-wrap justify-center gap-3">
-        {persons.map((p, i) => (
-          <div key={p.id} className="flex items-center gap-2">
-            <PersonChip person={p} onSelect={onSelect} />
-            {showHeart && i === 0 && persons.length === 2 && (
-              <Heart className="w-4 h-4 text-primary shrink-0" />
-            )}
-          </div>
+        {persons.map((p) => (
+          <PersonChip key={p.id} person={p} onSelect={onSelect} />
         ))}
       </div>
       <div className="w-px h-6 bg-border" />
@@ -234,7 +323,7 @@ function PersonChip({ person, onSelect, isSelected }: {
   return (
     <button
       onClick={() => onSelect(person.id)}
-      className={`flex flex-col items-center gap-1.5 min-w-[80px] max-w-[110px] group transition ${isSelected ? "opacity-100" : "opacity-80 hover:opacity-100"}`}
+      className={`flex flex-col items-center gap-1.5 min-w-[80px] max-w-[110px] transition ${isSelected ? "opacity-100" : "opacity-80 hover:opacity-100"}`}
     >
       <div
         className={`grid place-items-center w-14 h-14 rounded-full text-primary-foreground font-semibold text-sm shadow-md transition ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}

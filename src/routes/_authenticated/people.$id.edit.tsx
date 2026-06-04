@@ -114,6 +114,18 @@ function EditPerson() {
     <form onSubmit={submit} className="space-y-4">
       <h1 className="font-display text-3xl font-semibold">Edit {person.name}</h1>
 
+      {missingRefs.length > 0 && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="font-medium mb-1">Broken relationships detected</div>
+          <ul className="list-disc pl-5 space-y-0.5">
+            {missingRefs.map((r) => (
+              <li key={r.field}>{r.field} references a person that no longer exists (id: {r.id.slice(0, 8)}…). Please reselect or clear it.</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+
       <Field label="Name">
         <input required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
       </Field>

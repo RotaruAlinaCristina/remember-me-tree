@@ -54,11 +54,32 @@ function EditPerson() {
     }
   }, [person]);
 
+  const idSet = new Set(people.map((p) => p.id));
+  const missingRefs: { field: string; id: string }[] = [];
+  if (motherId && !idSet.has(motherId) && people.length > 0) missingRefs.push({ field: "Mother", id: motherId });
+  if (fatherId && !idSet.has(fatherId) && people.length > 0) missingRefs.push({ field: "Father", id: fatherId });
+  if (partnerId && !idSet.has(partnerId) && people.length > 0) missingRefs.push({ field: "Partner", id: partnerId });
+
+  const validate = (): string | null => {
+    if (!name.trim()) return "Name is required";
+    if (!birthdate) return "Birthday is required";
+    const ids = [motherId, fatherId, partnerId].filter(Boolean);
+    if (ids.some((x) => x === id)) return "A person can't be their own parent or partner";
+    if (motherId && fatherId && motherId === fatherId) return "Mother and father must be different people";
+    if (partnerId && (partnerId === motherId || partnerId === fatherId)) return "Partner can't also be a parent";
+    for (const ref of [motherId, fatherId, partnerId]) {
+      if (ref && !idSet.has(ref)) return `Selected relation no longer exists — please reselect`;
+    }
+    return null;
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    const err = validate();
+    if (err) { toast.error(err); return; }
     setLoading(true);
     const { error } = await supabase.from("people").update({
-      name,
+      name: name.trim(),
       birthdate,
       gender: gender || null,
       mother_id: motherId || null,
@@ -74,6 +95,7 @@ function EditPerson() {
     qc.invalidateQueries({ queryKey: ["person", id] });
     router.navigate({ to: "/people" });
   };
+
 
   if (personLoading) {
     return <div className="text-muted-foreground text-sm">Loading…</div>;

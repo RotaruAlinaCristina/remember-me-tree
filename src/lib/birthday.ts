@@ -57,10 +57,11 @@ export function zodiacSign(birthdate: string): string {
   return "Capricorn";
 }
 
-export function formatMonthDay(birthdate: string): string {
+export function formatMonthDay(birthdate: string, locale?: string): string {
   const d = parseBirthdate(birthdate);
-  return d.toLocaleDateString(undefined, { month: "long", day: "numeric" });
+  return d.toLocaleDateString(locale, { month: "long", day: "numeric" });
 }
+
 
 export function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("");

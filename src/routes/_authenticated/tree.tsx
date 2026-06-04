@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { initials, type Person } from "@/lib/birthday";
-import { Heart, Users } from "lucide-react";
-import { useMemo } from "react";
+import { Heart, Users, Search, X } from "lucide-react";
+import { useState, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/tree")({
@@ -12,6 +12,9 @@ export const Route = createFileRoute("/_authenticated/tree")({
 
 function TreePage() {
   const { t } = useI18n();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
   const { data: people = [], isLoading } = useQuery({
     queryKey: ["people"],
     queryFn: async () => {
@@ -21,32 +24,63 @@ function TreePage() {
     },
   });
 
-  const { roots, childrenOf, byId } = useMemo(() => {
-    const byId = new Map(people.map((p) => [p.id, p]));
-    const childrenOf = new Map<string, Person[]>();
+  const byId = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return people;
+    return people.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  }, [people, search]);
+
+  const selected = selectedId ? byId.get(selectedId) : null;
+
+  // Găsește copiii unei persoane
+  const childrenOf = useMemo(() => {
+    const map = new Map<string, Person[]>();
     for (const p of people) {
       for (const parentId of [p.mother_id, p.father_id]) {
         if (!parentId || !byId.has(parentId)) continue;
-        const arr = childrenOf.get(parentId) ?? [];
-        arr.push(p);
-        childrenOf.set(parentId, arr);
+        const arr = map.get(parentId) ?? [];
+        if (!arr.find((x) => x.id === p.id)) arr.push(p);
+        map.set(parentId, arr);
       }
     }
-    const partnerOfRendered = new Set<string>();
-    const roots: Person[] = [];
-    for (const p of people) {
-      const hasKnownParent =
-        (p.mother_id && byId.has(p.mother_id)) ||
-        (p.father_id && byId.has(p.father_id));
-      if (hasKnownParent) continue;
-      if (partnerOfRendered.has(p.id)) continue;
-      roots.push(p);
-      if (p.partner_id && byId.has(p.partner_id)) {
-        partnerOfRendered.add(p.partner_id);
+    return map;
+  }, [people, byId]);
+
+  // Găsește frații/surorile
+  const siblingsOf = useMemo(() => {
+    if (!selected) return [];
+    const siblings: Person[] = [];
+    const seenIds = new Set<string>();
+    for (const parentId of [selected.mother_id, selected.father_id]) {
+      if (!parentId) continue;
+      const kids = childrenOf.get(parentId) ?? [];
+      for (const k of kids) {
+        if (k.id !== selected.id && !seenIds.has(k.id)) {
+          siblings.push(k);
+          seenIds.add(k.id);
+        }
       }
     }
-    return { roots, childrenOf, byId };
-  }, [people]);
+    return siblings;
+  }, [selected, childrenOf]);
+
+  // Copiii persoanei selectate
+  const children = useMemo(() => {
+    if (!selected) return [];
+    const kids: Person[] = [];
+    const seenIds = new Set<string>();
+    const directKids = childrenOf.get(selected.id) ?? [];
+    const partner = selected.partner_id ? byId.get(selected.partner_id) : null;
+    const partnerKids = partner ? (childrenOf.get(partner.id) ?? []) : [];
+    for (const k of [...directKids, ...partnerKids]) {
+      if (!seenIds.has(k.id)) {
+        kids.push(k);
+        seenIds.add(k.id);
+      }
+    }
+    return kids;
+  }, [selected, childrenOf, byId]);
 
   return (
     <div className="space-y-5">
@@ -60,106 +94,158 @@ function TreePage() {
       ) : people.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="space-y-8">
-          {roots.map((root) => (
-            <TreeNode
-              key={root.id}
-              person={root}
-              byId={byId}
-              childrenOf={childrenOf}
-              seen={new Set()}
+        <div className="space-y-5">
+          {/* Căsuță de căutare */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("tree.search_placeholder")}
+              className="w-full pl-9 pr-9 py-3 rounded-2xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm"
             />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TreeNode({
-  person,
-  byId,
-  childrenOf,
-  seen,
-}: {
-  person: Person;
-  byId: Map<string, Person>;
-  childrenOf: Map<string, Person[]>;
-  seen: Set<string>;
-}) {
-  const { t } = useI18n();
-  if (seen.has(person.id)) return null;
-  const nextSeen = new Set(seen);
-  nextSeen.add(person.id);
-
-  const partner = person.partner_id ? byId.get(person.partner_id) : null;
-  if (partner) nextSeen.add(partner.id);
-
-  const direct = childrenOf.get(person.id) ?? [];
-  const partnerKids = partner ? (childrenOf.get(partner.id) ?? []) : [];
-  const seenIds = new Set<string>();
-  const kids = [...direct, ...partnerKids].filter((c) => {
-    if (seenIds.has(c.id)) return false;
-    seenIds.add(c.id);
-    return true;
-  });
-
-  return (
-    <div className="flex flex-col items-center">
-      <div className="flex items-center gap-2">
-        <PersonChip person={person} />
-        {partner && (
-          <>
-            <Heart className="w-4 h-4 text-primary shrink-0" aria-label={t("tree.partner_aria")} />
-            <PersonChip person={partner} />
-          </>
-        )}
-      </div>
-
-      {kids.length > 0 && (
-        <>
-          <div className="w-px h-5 bg-border" />
-          <div className="flex flex-wrap justify-center gap-x-6 gap-y-4 pt-2 border-t border-border pt-5">
-            {kids.map((child) => (
-              <TreeNode
-                key={child.id}
-                person={child}
-                byId={byId}
-                childrenOf={childrenOf}
-                seen={nextSeen}
-              />
-            ))}
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            )}
           </div>
-        </>
+
+          {/* Lista persoanelor */}
+          {!selected && (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {filtered.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => { setSelectedId(p.id); setSearch(""); }}
+                  className="flex items-center gap-2 p-3 rounded-2xl bg-card border border-border hover:shadow-md transition text-left"
+                >
+                  <div
+                    className="grid place-items-center w-9 h-9 rounded-full text-primary-foreground font-semibold text-xs shrink-0"
+                    style={{ background: "var(--gradient-festive)" }}
+                  >
+                    {initials(p.name)}
+                  </div>
+                  <span className="text-sm font-medium truncate">{p.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Arborele centrat pe persoana selectată */}
+          {selected && (
+            <div className="space-y-4">
+              <button
+                onClick={() => setSelectedId(null)}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition"
+              >
+                <X className="w-4 h-4" /> {t("tree.back")}
+              </button>
+
+              <div className="rounded-3xl border border-border bg-card/50 p-6 space-y-8">
+
+                {/* Bunici */}
+                {(selected.mother_id || selected.father_id) && (() => {
+                  const mother = selected.mother_id ? byId.get(selected.mother_id) : null;
+                  const father = selected.father_id ? byId.get(selected.father_id) : null;
+                  const maternalGrandmother = mother?.mother_id ? byId.get(mother.mother_id) : null;
+                  const maternalGrandfather = mother?.father_id ? byId.get(mother.father_id) : null;
+                  const paternalGrandmother = father?.mother_id ? byId.get(father.mother_id) : null;
+                  const paternalGrandfather = father?.father_id ? byId.get(father.father_id) : null;
+                  const hasGrandparents = maternalGrandmother || maternalGrandfather || paternalGrandmother || paternalGrandfather;
+
+                  return (
+                    <>
+                      {hasGrandparents && (
+                        <FamilyRow label={t("tree.grandparents")} persons={[maternalGrandmother, maternalGrandfather, paternalGrandmother, paternalGrandfather].filter(Boolean) as Person[]} onSelect={setSelectedId} />
+                      )}
+                      <FamilyRow
+                        label={t("tree.parents")}
+                        persons={[mother, father].filter(Boolean) as Person[]}
+                        onSelect={setSelectedId}
+                        showHeart={!!(mother && father)}
+                      />
+                    </>
+                  );
+                })()}
+
+                {/* Persoana selectată + partener */}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground mb-2">{t("tree.you_selected")}</span>
+                  <div className="flex items-center gap-3">
+                    <PersonChip person={selected} onSelect={setSelectedId} isSelected />
+                    {selected.partner_id && byId.get(selected.partner_id) && (
+                      <>
+                        <Heart className="w-5 h-5 text-primary shrink-0" />
+                        <PersonChip person={byId.get(selected.partner_id)!} onSelect={setSelectedId} />
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Frați/Surori */}
+                {siblingsOf.length > 0 && (
+                  <FamilyRow label={t("tree.siblings")} persons={siblingsOf} onSelect={setSelectedId} />
+                )}
+
+                {/* Copii */}
+                {children.length > 0 && (
+                  <FamilyRow label={t("tree.children")} persons={children} onSelect={setSelectedId} />
+                )}
+
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-function PersonChip({ person }: { person: Person }) {
-  const { t } = useI18n();
+function FamilyRow({ label, persons, onSelect, showHeart }: {
+  label: string;
+  persons: Person[];
+  onSelect: (id: string) => void;
+  showHeart?: boolean;
+}) {
   return (
-    <div className="flex flex-col items-center gap-1.5 min-w-[88px] max-w-[120px] group">
-      <div className="relative">
-        <div
-          className="grid place-items-center w-14 h-14 rounded-full text-primary-foreground font-semibold text-sm shadow-[var(--shadow-card)]"
-          style={{ background: "var(--gradient-festive)" }}
-        >
-          {initials(person.name)}
-        </div>
-        <Link
-          to="/people/$id/edit"
-          params={{ id: person.id }}
-          className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-background border border-border grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-          aria-label={t("tree.edit_aria", { name: person.name })}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-        </Link>
+    <div className="flex flex-col items-center gap-2">
+      <span className="text-xs uppercase tracking-widest text-muted-foreground">{label}</span>
+      <div className="flex flex-wrap justify-center gap-3">
+        {persons.map((p, i) => (
+          <div key={p.id} className="flex items-center gap-2">
+            <PersonChip person={p} onSelect={onSelect} />
+            {showHeart && i === 0 && persons.length === 2 && (
+              <Heart className="w-4 h-4 text-primary shrink-0" />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="w-px h-6 bg-border" />
+    </div>
+  );
+}
+
+function PersonChip({ person, onSelect, isSelected }: {
+  person: Person;
+  onSelect: (id: string) => void;
+  isSelected?: boolean;
+}) {
+  return (
+    <button
+      onClick={() => onSelect(person.id)}
+      className={`flex flex-col items-center gap-1.5 min-w-[80px] max-w-[110px] group transition ${isSelected ? "opacity-100" : "opacity-80 hover:opacity-100"}`}
+    >
+      <div
+        className={`grid place-items-center w-14 h-14 rounded-full text-primary-foreground font-semibold text-sm shadow-md transition ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}
+        style={{ background: "var(--gradient-festive)" }}
+      >
+        {initials(person.name)}
       </div>
       <div className="text-xs font-medium text-center leading-tight truncate w-full">
         {person.name}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -170,13 +256,6 @@ function EmptyState() {
       <Users className="w-10 h-10 mx-auto text-primary mb-3" />
       <h2 className="font-display text-xl font-semibold">{t("tree.empty_title")}</h2>
       <p className="text-muted-foreground text-sm mt-1 mb-5">{t("tree.empty_desc")}</p>
-      <Link
-        to="/people/new"
-        className="inline-block px-5 py-2.5 rounded-full text-primary-foreground font-medium"
-        style={{ background: "var(--gradient-festive)" }}
-      >
-        {t("dashboard.add_person")}
-      </Link>
     </div>
   );
 }

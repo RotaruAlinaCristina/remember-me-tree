@@ -70,6 +70,14 @@ const en: Dict = {
   "form.not_found": "Person not found",
   "form.back": "Back to people",
 
+  "tree.search_placeholder": "Search for a person...",
+ "tree.back": "Back to all people",
+ "tree.you_selected": "Selected",
+ "tree.grandparents": "Grandparents",
+ "tree.parents": "Parents",
+ "tree.siblings": "Siblings",
+ "tree.children": "Children",
+
   "form.err.name_required": "Name is required",
   "form.err.bday_required": "Birthday is required",
   "form.err.self_ref": "A person can't be their own parent or partner",
@@ -164,6 +172,14 @@ const ro: Dict = {
   "form.updated": "{name} actualizat",
   "form.not_found": "Persoană inexistentă",
   "form.back": "Înapoi la persoane",
+
+  "tree.search_placeholder": "Caută o persoană...",
+ "tree.back": "Înapoi la toate persoanele",
+ "tree.you_selected": "Tu ai selectat",
+ "tree.grandparents": "Bunici",
+ "tree.parents": "Părinți",
+ "tree.siblings": "Frați / Surori",
+ "tree.children": "Copii",
 
   "form.err.name_required": "Numele este obligatoriu",
   "form.err.bday_required": "Ziua de naștere este obligatorie",

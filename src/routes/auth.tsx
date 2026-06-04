@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Cake } from "lucide-react";
 import { lovable } from "@/integrations/lovable";
+import { LanguageToggle, useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +37,7 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Check your email", { description: "Confirm your address, then sign in." });
+        toast.success(t("auth.check_email"), { description: t("auth.check_email_desc") });
         setMode("signin");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -43,7 +45,7 @@ function AuthPage() {
         router.navigate({ to: "/dashboard" });
       }
     } catch (err: any) {
-      toast.error(err.message ?? "Something went wrong");
+      toast.error(err.message ?? t("auth.generic_error"));
     } finally {
       setLoading(false);
     }
@@ -53,7 +55,7 @@ function AuthPage() {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
     if (result.error) {
-      toast.error("Google sign-in failed");
+      toast.error(t("auth.google_failed"));
       setLoading(false);
       return;
     }
@@ -62,39 +64,40 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen grid place-items-center px-5 py-10" style={{ background: "var(--gradient-soft)" }}>
+    <div className="min-h-screen grid place-items-center px-5 py-10 relative" style={{ background: "var(--gradient-soft)" }}>
+      <div className="absolute top-4 right-4"><LanguageToggle /></div>
       <div className="w-full max-w-sm">
         <Link to="/auth" className="flex flex-col items-center gap-3 mb-8">
           <span className="grid place-items-center w-14 h-14 rounded-2xl shadow-md" style={{ background: "var(--gradient-festive)" }}>
             <Cake className="w-7 h-7 text-primary-foreground" />
           </span>
-          <h1 className="font-display text-3xl font-semibold">Kindred</h1>
-          <p className="text-muted-foreground text-sm text-center">Birthdays, your family tree, and gentle reminders.</p>
+          <h1 className="font-display text-3xl font-semibold">{t("app.name")}</h1>
+          <p className="text-muted-foreground text-sm text-center">{t("app.tagline")}</p>
         </Link>
 
         <div className="bg-card rounded-2xl p-6 shadow-[var(--shadow-card)] border border-border">
           <div className="flex bg-muted rounded-full p-1 mb-6 text-sm">
-            <button onClick={() => setMode("signin")} className={`flex-1 py-2 rounded-full transition ${mode === "signin" ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>Sign in</button>
-            <button onClick={() => setMode("signup")} className={`flex-1 py-2 rounded-full transition ${mode === "signup" ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>Sign up</button>
+            <button onClick={() => setMode("signin")} className={`flex-1 py-2 rounded-full transition ${mode === "signin" ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>{t("auth.signin")}</button>
+            <button onClick={() => setMode("signup")} className={`flex-1 py-2 rounded-full transition ${mode === "signup" ? "bg-card shadow text-foreground" : "text-muted-foreground"}`}>{t("auth.signup")}</button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
             {mode === "signup" && (
-              <Input value={name} onValueChange={setName} placeholder="Your name" autoComplete="name" required />
+              <Input value={name} onValueChange={setName} placeholder={t("auth.name")} autoComplete="name" required />
             )}
-            <Input value={email} onValueChange={setEmail} type="email" placeholder="you@example.com" autoComplete="email" required />
-            <Input value={password} onValueChange={setPassword} type="password" placeholder="Password" autoComplete={mode === "signup" ? "new-password" : "current-password"} required minLength={6} />
+            <Input value={email} onValueChange={setEmail} type="email" placeholder={t("auth.email")} autoComplete="email" required />
+            <Input value={password} onValueChange={setPassword} type="password" placeholder={t("auth.password")} autoComplete={mode === "signup" ? "new-password" : "current-password"} required minLength={6} />
             <button type="submit" disabled={loading} className="w-full py-3 rounded-xl font-medium text-primary-foreground disabled:opacity-60" style={{ background: "var(--gradient-festive)", boxShadow: "var(--shadow-glow)" }}>
-              {loading ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
+              {loading ? t("auth.please_wait") : mode === "signup" ? t("auth.create") : t("auth.signin")}
             </button>
           </form>
 
           <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
+            <div className="h-px flex-1 bg-border" /> {t("auth.or")} <div className="h-px flex-1 bg-border" />
           </div>
 
           <button onClick={handleGoogle} disabled={loading} className="w-full py-3 rounded-xl border border-border bg-card hover:bg-muted transition font-medium flex items-center justify-center gap-2">
-            <GoogleIcon /> Continue with Google
+            <GoogleIcon /> {t("auth.google")}
           </button>
         </div>
       </div>

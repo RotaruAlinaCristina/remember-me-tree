@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Person } from "@/lib/birthday";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/people/new")({
   component: NewPerson,
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_authenticated/people/new")({
 function NewPerson() {
   const router = useRouter();
   const qc = useQueryClient();
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [birthdate, setBirthdate] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "other" | "">("");
@@ -48,42 +50,45 @@ function NewPerson() {
     });
     setLoading(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(`${name} added`);
+    toast.success(t("form.added", { name }));
     qc.invalidateQueries({ queryKey: ["people"] });
     router.navigate({ to: "/people" });
   };
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <h1 className="font-display text-3xl font-semibold">Add a person</h1>
+      <h1 className="font-display text-3xl font-semibold">{t("form.add_title")}</h1>
 
-      <Field label="Name">
+      <Field label={t("form.name")}>
         <input required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
       </Field>
-      <Field label="Birthday">
+      <Field label={t("form.birthday")}>
         <input required type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} className={inputCls} />
       </Field>
-      <Field label="Gender (optional)">
+      <Field label={t("form.gender")}>
         <select value={gender} onChange={(e) => setGender(e.target.value as any)} className={inputCls}>
-          <option value="">—</option><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option>
+          <option value="">{t("form.gender_dash")}</option>
+          <option value="female">{t("form.gender_female")}</option>
+          <option value="male">{t("form.gender_male")}</option>
+          <option value="other">{t("form.gender_other")}</option>
         </select>
       </Field>
 
       <div className="grid grid-cols-1 gap-3">
-        <PersonSelect label="Mother" value={motherId} onChange={setMotherId} people={people} />
-        <PersonSelect label="Father" value={fatherId} onChange={setFatherId} people={people} />
-        <PersonSelect label="Partner" value={partnerId} onChange={setPartnerId} people={people} />
+        <PersonSelect label={t("form.mother")} value={motherId} onChange={setMotherId} people={people} />
+        <PersonSelect label={t("form.father")} value={fatherId} onChange={setFatherId} people={people} />
+        <PersonSelect label={t("form.partner")} value={partnerId} onChange={setPartnerId} people={people} />
       </div>
 
-      <Field label="Gift ideas">
-        <textarea value={giftIdeas} onChange={(e) => setGiftIdeas(e.target.value)} rows={3} className={inputCls} placeholder="Books, plants, vinyl…" />
+      <Field label={t("form.gift_ideas")}>
+        <textarea value={giftIdeas} onChange={(e) => setGiftIdeas(e.target.value)} rows={3} className={inputCls} placeholder={t("form.gift_ph")} />
       </Field>
-      <Field label="Notes">
+      <Field label={t("form.notes")}>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputCls} />
       </Field>
 
       <button disabled={loading} className="w-full py-3 rounded-xl font-medium text-primary-foreground disabled:opacity-60" style={{ background: "var(--gradient-festive)", boxShadow: "var(--shadow-glow)" }}>
-        {loading ? "Saving…" : "Save"}
+        {loading ? t("form.saving") : t("form.save")}
       </button>
     </form>
   );

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Person } from "@/lib/birthday";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/people/$id/edit")({
   component: EditPerson,
@@ -13,6 +14,7 @@ function EditPerson() {
   const { id } = Route.useParams();
   const router = useRouter();
   const qc = useQueryClient();
+  const { t } = useI18n();
 
   const { data: person, isLoading: personLoading } = useQuery({
     queryKey: ["person", id],
@@ -56,19 +58,19 @@ function EditPerson() {
 
   const idSet = new Set(people.map((p) => p.id));
   const missingRefs: { field: string; id: string }[] = [];
-  if (motherId && !idSet.has(motherId) && people.length > 0) missingRefs.push({ field: "Mother", id: motherId });
-  if (fatherId && !idSet.has(fatherId) && people.length > 0) missingRefs.push({ field: "Father", id: fatherId });
-  if (partnerId && !idSet.has(partnerId) && people.length > 0) missingRefs.push({ field: "Partner", id: partnerId });
+  if (motherId && !idSet.has(motherId) && people.length > 0) missingRefs.push({ field: t("form.mother"), id: motherId });
+  if (fatherId && !idSet.has(fatherId) && people.length > 0) missingRefs.push({ field: t("form.father"), id: fatherId });
+  if (partnerId && !idSet.has(partnerId) && people.length > 0) missingRefs.push({ field: t("form.partner"), id: partnerId });
 
   const validate = (): string | null => {
-    if (!name.trim()) return "Name is required";
-    if (!birthdate) return "Birthday is required";
+    if (!name.trim()) return t("form.err.name_required");
+    if (!birthdate) return t("form.err.bday_required");
     const ids = [motherId, fatherId, partnerId].filter(Boolean);
-    if (ids.some((x) => x === id)) return "A person can't be their own parent or partner";
-    if (motherId && fatherId && motherId === fatherId) return "Mother and father must be different people";
-    if (partnerId && (partnerId === motherId || partnerId === fatherId)) return "Partner can't also be a parent";
+    if (ids.some((x) => x === id)) return t("form.err.self_ref");
+    if (motherId && fatherId && motherId === fatherId) return t("form.err.parents_different");
+    if (partnerId && (partnerId === motherId || partnerId === fatherId)) return t("form.err.partner_parent");
     for (const ref of [motherId, fatherId, partnerId]) {
-      if (ref && !idSet.has(ref)) return `Selected relation no longer exists — please reselect`;
+      if (ref && !idSet.has(ref)) return t("form.err.missing_ref");
     }
     return null;
   };
@@ -90,69 +92,70 @@ function EditPerson() {
     }).eq("id", id);
     setLoading(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(`${name} updated`);
+    toast.success(t("form.updated", { name }));
     qc.invalidateQueries({ queryKey: ["people"] });
     qc.invalidateQueries({ queryKey: ["person", id] });
     router.navigate({ to: "/people" });
   };
 
-
   if (personLoading) {
-    return <div className="text-muted-foreground text-sm">Loading…</div>;
+    return <div className="text-muted-foreground text-sm">{t("dashboard.loading")}</div>;
   }
 
   if (!person) {
     return (
       <div className="space-y-4">
-        <h1 className="font-display text-3xl font-semibold">Person not found</h1>
-        <Link to="/people" className="text-primary underline">Back to people</Link>
+        <h1 className="font-display text-3xl font-semibold">{t("form.not_found")}</h1>
+        <Link to="/people" className="text-primary underline">{t("form.back")}</Link>
       </div>
     );
   }
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <h1 className="font-display text-3xl font-semibold">Edit {person.name}</h1>
+      <h1 className="font-display text-3xl font-semibold">{t("form.edit_title", { name: person.name })}</h1>
 
       {missingRefs.length > 0 && (
         <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          <div className="font-medium mb-1">Broken relationships detected</div>
+          <div className="font-medium mb-1">{t("form.warn.title")}</div>
           <ul className="list-disc pl-5 space-y-0.5">
             {missingRefs.map((r) => (
-              <li key={r.field}>{r.field} references a person that no longer exists (id: {r.id.slice(0, 8)}…). Please reselect or clear it.</li>
+              <li key={r.field}>{t("form.warn.item", { field: r.field, id: r.id.slice(0, 8) })}</li>
             ))}
           </ul>
         </div>
       )}
 
-
-      <Field label="Name">
+      <Field label={t("form.name")}>
         <input required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
       </Field>
-      <Field label="Birthday">
+      <Field label={t("form.birthday")}>
         <input required type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} className={inputCls} />
       </Field>
-      <Field label="Gender (optional)">
+      <Field label={t("form.gender")}>
         <select value={gender} onChange={(e) => setGender(e.target.value as any)} className={inputCls}>
-          <option value="">—</option><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option>
+          <option value="">{t("form.gender_dash")}</option>
+          <option value="female">{t("form.gender_female")}</option>
+          <option value="male">{t("form.gender_male")}</option>
+          <option value="other">{t("form.gender_other")}</option>
         </select>
       </Field>
 
       <div className="grid grid-cols-1 gap-3">
-        <PersonSelect label="Mother" value={motherId} onChange={setMotherId} people={people} excludeId={id} />
-        <PersonSelect label="Father" value={fatherId} onChange={setFatherId} people={people} excludeId={id} />
-        <PersonSelect label="Partner" value={partnerId} onChange={setPartnerId} people={people} excludeId={id} />
+        <PersonSelect label={t("form.mother")} value={motherId} onChange={setMotherId} people={people} excludeId={id} />
+        <PersonSelect label={t("form.father")} value={fatherId} onChange={setFatherId} people={people} excludeId={id} />
+        <PersonSelect label={t("form.partner")} value={partnerId} onChange={setPartnerId} people={people} excludeId={id} />
       </div>
 
-      <Field label="Gift ideas">
-        <textarea value={giftIdeas} onChange={(e) => setGiftIdeas(e.target.value)} rows={3} className={inputCls} placeholder="Books, plants, vinyl…" />
+      <Field label={t("form.gift_ideas")}>
+        <textarea value={giftIdeas} onChange={(e) => setGiftIdeas(e.target.value)} rows={3} className={inputCls} placeholder={t("form.gift_ph")} />
       </Field>
-      <Field label="Notes">
+      <Field label={t("form.notes")}>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={inputCls} />
       </Field>
 
       <button disabled={loading} className="w-full py-3 rounded-xl font-medium text-primary-foreground disabled:opacity-60" style={{ background: "var(--gradient-festive)", boxShadow: "var(--shadow-glow)" }}>
-        {loading ? "Saving…" : "Save changes"}
+        {loading ? t("form.saving") : t("form.save_changes")}
       </button>
     </form>
   );

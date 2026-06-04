@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { initials, type Person } from "@/lib/birthday";
 import { Heart, Users } from "lucide-react";
 import { useMemo } from "react";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_authenticated/tree")({
   component: TreePage,
 });
 
 function TreePage() {
-  // Same key as dashboard + new-person form → invalidation flows here automatically.
+  const { t } = useI18n();
   const { data: people = [], isLoading } = useQuery({
     queryKey: ["people"],
     queryFn: async () => {
@@ -31,8 +32,6 @@ function TreePage() {
         childrenOf.set(parentId, arr);
       }
     }
-    // A root is someone whose parents aren't in our set, AND who isn't already
-    // rendered as a partner of an earlier root (we render partners inline).
     const partnerOfRendered = new Set<string>();
     const roots: Person[] = [];
     for (const p of people) {
@@ -52,14 +51,12 @@ function TreePage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-3xl font-semibold">Family tree</h1>
-        <p className="text-muted-foreground text-sm">
-          Built from the relationships you've added. Updates as you go.
-        </p>
+        <h1 className="font-display text-3xl font-semibold">{t("tree.title")}</h1>
+        <p className="text-muted-foreground text-sm">{t("tree.subtitle")}</p>
       </div>
 
       {isLoading ? (
-        <div className="text-muted-foreground text-sm">Loading…</div>
+        <div className="text-muted-foreground text-sm">{t("dashboard.loading")}</div>
       ) : people.length === 0 ? (
         <EmptyState />
       ) : (
@@ -90,6 +87,7 @@ function TreeNode({
   childrenOf: Map<string, Person[]>;
   seen: Set<string>;
 }) {
+  const { t } = useI18n();
   if (seen.has(person.id)) return null;
   const nextSeen = new Set(seen);
   nextSeen.add(person.id);
@@ -97,7 +95,6 @@ function TreeNode({
   const partner = person.partner_id ? byId.get(person.partner_id) : null;
   if (partner) nextSeen.add(partner.id);
 
-  // Children of this couple/person: union of either parent's children.
   const direct = childrenOf.get(person.id) ?? [];
   const partnerKids = partner ? (childrenOf.get(partner.id) ?? []) : [];
   const seenIds = new Set<string>();
@@ -113,7 +110,7 @@ function TreeNode({
         <PersonChip person={person} />
         {partner && (
           <>
-            <Heart className="w-4 h-4 text-primary shrink-0" aria-label="partner" />
+            <Heart className="w-4 h-4 text-primary shrink-0" aria-label={t("tree.partner_aria")} />
             <PersonChip person={partner} />
           </>
         )}
@@ -140,6 +137,7 @@ function TreeNode({
 }
 
 function PersonChip({ person }: { person: Person }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center gap-1.5 min-w-[88px] max-w-[120px] group">
       <div className="relative">
@@ -153,7 +151,7 @@ function PersonChip({ person }: { person: Person }) {
           to="/people/$id/edit"
           params={{ id: person.id }}
           className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-background border border-border grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-          aria-label={`Edit ${person.name}`}
+          aria-label={t("tree.edit_aria", { name: person.name })}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
         </Link>
@@ -166,19 +164,18 @@ function PersonChip({ person }: { person: Person }) {
 }
 
 function EmptyState() {
+  const { t } = useI18n();
   return (
     <div className="text-center py-12 px-6 rounded-3xl border border-dashed border-border bg-card/50">
       <Users className="w-10 h-10 mx-auto text-primary mb-3" />
-      <h2 className="font-display text-xl font-semibold">No tree yet</h2>
-      <p className="text-muted-foreground text-sm mt-1 mb-5">
-        Add people and set their mother, father, or partner to grow your tree.
-      </p>
+      <h2 className="font-display text-xl font-semibold">{t("tree.empty_title")}</h2>
+      <p className="text-muted-foreground text-sm mt-1 mb-5">{t("tree.empty_desc")}</p>
       <Link
         to="/people/new"
         className="inline-block px-5 py-2.5 rounded-full text-primary-foreground font-medium"
         style={{ background: "var(--gradient-festive)" }}
       >
-        Add a person
+        {t("dashboard.add_person")}
       </Link>
     </div>
   );

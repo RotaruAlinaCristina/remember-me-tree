@@ -54,11 +54,32 @@ function EditPerson() {
     }
   }, [person]);
 
+  const idSet = new Set(people.map((p) => p.id));
+  const missingRefs: { field: string; id: string }[] = [];
+  if (motherId && !idSet.has(motherId) && people.length > 0) missingRefs.push({ field: "Mother", id: motherId });
+  if (fatherId && !idSet.has(fatherId) && people.length > 0) missingRefs.push({ field: "Father", id: fatherId });
+  if (partnerId && !idSet.has(partnerId) && people.length > 0) missingRefs.push({ field: "Partner", id: partnerId });
+
+  const validate = (): string | null => {
+    if (!name.trim()) return "Name is required";
+    if (!birthdate) return "Birthday is required";
+    const ids = [motherId, fatherId, partnerId].filter(Boolean);
+    if (ids.some((x) => x === id)) return "A person can't be their own parent or partner";
+    if (motherId && fatherId && motherId === fatherId) return "Mother and father must be different people";
+    if (partnerId && (partnerId === motherId || partnerId === fatherId)) return "Partner can't also be a parent";
+    for (const ref of [motherId, fatherId, partnerId]) {
+      if (ref && !idSet.has(ref)) return `Selected relation no longer exists — please reselect`;
+    }
+    return null;
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    const err = validate();
+    if (err) { toast.error(err); return; }
     setLoading(true);
     const { error } = await supabase.from("people").update({
-      name,
+      name: name.trim(),
       birthdate,
       gender: gender || null,
       mother_id: motherId || null,
@@ -74,6 +95,7 @@ function EditPerson() {
     qc.invalidateQueries({ queryKey: ["person", id] });
     router.navigate({ to: "/people" });
   };
+
 
   if (personLoading) {
     return <div className="text-muted-foreground text-sm">Loading…</div>;
@@ -91,6 +113,18 @@ function EditPerson() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <h1 className="font-display text-3xl font-semibold">Edit {person.name}</h1>
+
+      {missingRefs.length > 0 && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="font-medium mb-1">Broken relationships detected</div>
+          <ul className="list-disc pl-5 space-y-0.5">
+            {missingRefs.map((r) => (
+              <li key={r.field}>{r.field} references a person that no longer exists (id: {r.id.slice(0, 8)}…). Please reselect or clear it.</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
 
       <Field label="Name">
         <input required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />

@@ -22,7 +22,7 @@ function PeoplePage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("people").select("*").order("name");
       if (error) throw error;
-      return (data ?? []) as Person[];
+      return (data ?? []) as unknown as Person[];;
     },
   });
 
@@ -182,11 +182,11 @@ function PersonRow({ person, locale, onFavorite, onDelete }: {
   return (
     <li className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border">
       <div
-        className="grid place-items-center w-11 h-11 rounded-full text-primary-foreground font-semibold shrink-0"
-        style={{ background: "var(--gradient-festive)" }}
-      >
-        {initials(person.name)}
-      </div>
+       className="grid place-items-center w-11 h-11 rounded-full text-primary-foreground font-semibold shrink-0"
+       style={{ background: person.is_favorite ? "linear-gradient(135deg, #dc2626, #9333ea)" : "var(--gradient-festive)" }}
+       >
+      {initials(person.name)}
+    </div>
       <div className="flex-1 min-w-0">
         <div className="font-medium truncate">{person.name}</div>
         <div className="text-xs text-muted-foreground">

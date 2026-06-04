@@ -20,7 +20,7 @@ function TreePage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("people").select("*").order("name");
       if (error) throw error;
-      return (data ?? []) as Person[];
+      return (data ?? []) as unknown as Person[];
     },
   });
 
@@ -154,13 +154,13 @@ function TreePage() {
     if (type === "ancestor") {
       if (gen === 1) return t("tree.parents");
       if (gen === 2) return t("tree.grandparents");
-      if (gen === 3) return "Străbunici";
-      return `Generația -${gen}`;
+      if (gen === 3) return t("tree.great_grandparents");
+      return `${t("tree.generation_up")}${gen}`;
     } else {
       if (gen === 1) return t("tree.children");
-      if (gen === 2) return "Nepoți";
-      if (gen === 3) return "Strănepoți";
-      return `Generația +${gen}`;
+      if (gen === 2) return t("tree.grandchildren");
+      if (gen === 3) return t("tree.great_grandchildren");
+      return `${t("tree.generation_down")}${gen}`;
     }
   };
 
@@ -233,7 +233,7 @@ function TreePage() {
                 {ancestors.length > 0 && (
                   <div className="space-y-6">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-widest">
-                      <ChevronUp className="w-4 h-4" /> Strămoși
+                      <ChevronUp className="w-4 h-4" /> {t("tree.ancestors")}
                     </div>
                     {ancestors.map((row) => (
                       <FamilyRow
@@ -275,7 +275,7 @@ function TreePage() {
                 {descendants.length > 0 && (
                   <div className="space-y-6">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-widest">
-                      <ChevronDown className="w-4 h-4" /> Descendenți
+                      <ChevronDown className="w-4 h-4" /> {t("tree.descendants")}
                     </div>
                     {descendants.map((row) => (
                       <FamilyRow
